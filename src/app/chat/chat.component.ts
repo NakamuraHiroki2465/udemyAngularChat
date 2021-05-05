@@ -5,10 +5,7 @@ import { Observable } from 'rxjs';
 import { Comment } from '../class/comment';
 import { User } from '../class/user';
 import { map } from 'rxjs/operators';
-
-const CURRENT_USER: User = new User(1,'中村　拡幹');
-const ANOTHER_USER: User = new User(2,'竹井　賢治');
-
+import { AngularFireAuth } from '@angular/fire/auth';
 
 @Component({
   selector: 'ac-chat',
@@ -19,22 +16,37 @@ export class ChatComponent implements OnInit {
 
   comments$: Observable<Comment[]>;
   commentsRef: AngularFireList<Comment>;
-  currentUser = CURRENT_USER;
+  currentUser: User;
+  currentUser$: Observable<User>;
   comment='';
 
-  constructor(private db: AngularFireDatabase){
+  constructor(
+    private afAuth: AngularFireAuth,
+    private db: AngularFireDatabase
+    ){
     this.commentsRef = db.list('/comments');
-    this.comments$ = this.commentsRef.snapshotChanges()
-      .pipe(
-        map((snapshots: SnapshotAction<Comment>[]) =>{
-          return snapshots.map(snapshot =>{
-            const value = snapshot.payload.val();
-            return new Comment({ key: snapshot.payload.key,...value})
-          });
-        })
-      );
   }
   ngOnInit(): void {
+    this.currentUser$ = this.afAuth.authState.pipe(
+      map((user: firebase.User | null) => {
+        console.log(user);
+        if (user) {
+          this.currentUser = new User(user);
+          return this.currentUser;
+        }
+        return null;
+      })
+      )
+
+    this.comments$ = this.commentsRef.snapshotChanges()
+    .pipe(
+      map((snapshots: SnapshotAction<Comment>[]) =>{
+        return snapshots.map(snapshot =>{
+          const value = snapshot.payload.val();
+          return new Comment({ key: snapshot.payload.key,...value})
+        });
+      })
+    );
   }
 
 
